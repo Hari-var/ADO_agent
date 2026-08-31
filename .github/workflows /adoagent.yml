@@ -73,6 +73,7 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: 1
 
+
   deploy:
     name: Deploy to Azure Web App
     runs-on: ubuntu-latest
