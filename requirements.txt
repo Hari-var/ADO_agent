@@ -1,0 +1,4 @@
+uvicorn
+azure-devops
+msrest
+git+https://github.com/shashanktu/vida.git
