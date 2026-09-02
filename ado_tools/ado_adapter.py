@@ -27,13 +27,22 @@ class _AzureIdentityCredential(BasicAuthentication):
         return session
 
 
+# def get_ado_client():
+#     org_url = os.environ.get("ADO_ORG_URL")
+#     if not org_url:
+#         logger.error("[ado_adapter] ADO_ORG_URL environment variable is not set.")
+#         raise EnvironmentError("ADO_ORG_URL is not set.")
+#     logger.info(f"[ado_adapter] Creating ADO connection to {org_url}")
+#     return Connection(base_url=org_url, creds=_AzureIdentityCredential())
+
 def get_ado_client():
     org_url = os.environ.get("ADO_ORG_URL")
+    pat = os.environ.get("ADO_PAT")
     if not org_url:
-        logger.error("[ado_adapter] ADO_ORG_URL environment variable is not set.")
         raise EnvironmentError("ADO_ORG_URL is not set.")
-    logger.info(f"[ado_adapter] Creating ADO connection to {org_url}")
-    return Connection(base_url=org_url, creds=_AzureIdentityCredential())
+    creds = BasicAuthentication("", pat) if pat else _AzureIdentityCredential()
+    return Connection(base_url=org_url, creds=creds)
+
 
 
 # ── Projects ──────────────────────────────────────────────────────────────────
@@ -501,6 +510,42 @@ def ado_get_build_timeline(project: str, build_id: int) -> list[dict]:
         return result
     except Exception as e:
         logger.error(f"[ado_adapter] [get_build_timeline] Failed. Error: {e}", exc_info=True)
+        raise
+
+
+# ── File Search ──────────────────────────────────────────────────────────────
+
+def ado_find_files(project: str, repo_name: str, branch: str = "main",
+                   pattern: str = None, extensions: list[str] = None,
+                   scope_path: str = "/") -> list[dict]:
+    """Find files in a repo by regex pattern and/or file extensions."""
+    import re
+    logger.info(f"[ado_adapter] [find_files] project='{project}', repo='{repo_name}', branch='{branch}', pattern='{pattern}', extensions={extensions}, scope='{scope_path}'")
+    try:
+        from azure.devops.v7_1.git.models import GitVersionDescriptor  # type: ignore
+        conn = get_ado_client()
+        client = conn.clients.get_git_client()
+        items = client.get_items(
+            repository_id=repo_name, project=project,
+            scope_path=scope_path, recursion_level="full",
+            version_descriptor=GitVersionDescriptor(version=branch, version_type="branch"),
+        )
+        compiled = re.compile(pattern) if pattern else None
+        exts = [e.lower() if e.startswith(".") else f".{e.lower()}" for e in (extensions or [])]
+        results = []
+        for item in items:
+            if item.is_folder:
+                continue
+            path = item.path
+            if exts and not any(path.lower().endswith(e) for e in exts):
+                continue
+            if compiled and not compiled.search(path):
+                continue
+            results.append({"path": path, "url": item.url})
+        logger.info(f"[ado_adapter] [find_files] Found {len(results)} matching files.")
+        return results
+    except Exception as e:
+        logger.error(f"[ado_adapter] [find_files] Failed. Error: {e}", exc_info=True)
         raise
 
 

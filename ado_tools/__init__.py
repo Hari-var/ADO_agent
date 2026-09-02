@@ -5,5 +5,5 @@ from ado_tools.base_trail import (
     create_work_item, get_work_item, set_pipeline_variable,
     dispatch_pipeline, approve_pipeline_run,
     list_pipeline_runs, get_pipeline_logs, get_build_timeline,
-    create_pipeline,
+    create_pipeline, find_files,
 )

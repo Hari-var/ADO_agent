@@ -12,7 +12,7 @@ from ado_tools.base_trail import (
     create_work_item, get_work_item, set_pipeline_variable,
     dispatch_pipeline, approve_pipeline_run,
     list_pipeline_runs, get_pipeline_logs, get_build_timeline,
-    create_pipeline,
+    create_pipeline, find_files,
 )
 from vida.utils.config import Github_agent_config as git_config  # type: ignore
 from vida.utils.config import Base_agent_config as baconfig
@@ -37,7 +37,7 @@ class AdoAgent(Base_Agent):
         create_work_item, get_work_item, set_pipeline_variable,
         dispatch_pipeline, approve_pipeline_run,
         list_pipeline_runs, get_pipeline_logs, get_build_timeline,
-        create_pipeline,
+        create_pipeline, find_files,
     ]
 
 

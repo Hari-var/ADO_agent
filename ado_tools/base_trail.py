@@ -10,7 +10,7 @@ from ado_tools.ado_adapter import (
     ado_set_pipeline_variable,
     ado_dispatch_pipeline, ado_approve_pipeline_run,
     ado_list_pipeline_runs, ado_get_pipeline_logs, ado_get_build_timeline,
-    ado_create_pipeline,
+    ado_create_pipeline, ado_find_files,
 )
 
 logger = get_logger(__name__)
@@ -23,7 +23,7 @@ def list_projects() -> list:
         return ado_list_projects()
     except Exception as e:
         logger.error(f"[ado_tools] [list_projects] Tool failed. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_create_repo", description="Create a new Git repository in an Azure DevOps project.", approval_mode="never_require")
@@ -36,7 +36,7 @@ def create_repo(
         return ado_create_repo(project=project, repo_name=repo_name)
     except Exception as e:
         logger.error(f"[ado_tools] [create_repo] Tool failed. project='{project}', repo_name='{repo_name}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_init_repo", description="Initialize an empty Azure DevOps Git repository with a first commit, creating the default branch. Must be called after creating a new repo before any other git operations.", approval_mode="never_require")
@@ -54,7 +54,7 @@ def init_repo(
                              file_path=file_path, content=content, commit_message=commit_message)
     except Exception as e:
         logger.error(f"[ado_tools] [init_repo] Tool failed. project='{project}', repo='{repo_name}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_list_repos", description="List all Git repositories in an Azure DevOps project.", approval_mode="never_require")
@@ -66,7 +66,7 @@ def list_repos(
         return ado_list_repos(project=project)
     except Exception as e:
         logger.error(f"[ado_tools] [list_repos] Tool failed. project='{project}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_list_branches", description="List all branches in an Azure DevOps Git repository.", approval_mode="never_require")
@@ -79,7 +79,7 @@ def list_branches(
         return ado_list_branches(project=project, repo_name=repo_name)
     except Exception as e:
         logger.error(f"[ado_tools] [list_branches] Tool failed. project='{project}', repo='{repo_name}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_create_branch", description="Create a new branch in an Azure DevOps Git repository from a source branch.", approval_mode="never_require")
@@ -94,7 +94,7 @@ def create_branch(
         return ado_create_branch(project=project, repo_name=repo_name, branch_name=branch_name, source_branch=source_branch)
     except Exception as e:
         logger.error(f"[ado_tools] [create_branch] Tool failed. project='{project}', repo='{repo_name}', branch='{branch_name}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_list_commits", description="List recent commits on a branch in an Azure DevOps repository.", approval_mode="never_require")
@@ -109,7 +109,7 @@ def list_commits(
         return ado_list_commits(project=project, repo_name=repo_name, branch=branch, top=top)
     except Exception as e:
         logger.error(f"[ado_tools] [list_commits] Tool failed. project='{project}', repo='{repo_name}', branch='{branch}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_read_file", description="Read the contents of a file from an Azure DevOps Git repository.", approval_mode="never_require")
@@ -124,7 +124,7 @@ def read_file(
         return ado_read_file(project=project, repo_name=repo_name, path=path, branch=branch)
     except Exception as e:
         logger.error(f"[ado_tools] [read_file] Tool failed. project='{project}', repo='{repo_name}', path='{path}', branch='{branch}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_commit_file", description="Create or update a file in an Azure DevOps Git repository by committing content.", approval_mode="never_require")
@@ -142,7 +142,7 @@ def commit_file(
                                file_path=file_path, content=content, commit_message=commit_message)
     except Exception as e:
         logger.error(f"[ado_tools] [commit_file] Tool failed. project='{project}', repo='{repo_name}', branch='{branch}', file='{file_path}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_create_pull_request", description="Create a pull request in an Azure DevOps Git repository.", approval_mode="never_require")
@@ -160,7 +160,7 @@ def create_pull_request(
                                        description=description, source_branch=source_branch, target_branch=target_branch)
     except Exception as e:
         logger.error(f"[ado_tools] [create_pull_request] Tool failed. project='{project}', repo='{repo_name}', title='{title}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_list_pipelines", description="List all pipelines in an Azure DevOps project.", approval_mode="never_require")
@@ -172,7 +172,7 @@ def list_pipelines(
         return ado_list_pipelines(project=project)
     except Exception as e:
         logger.error(f"[ado_tools] [list_pipelines] Tool failed. project='{project}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_run_pipeline", description="Trigger a pipeline run in Azure DevOps.", approval_mode="never_require")
@@ -187,7 +187,7 @@ def run_pipeline(
         return ado_run_pipeline(project=project, pipeline_id=pipeline_id, branch=branch, variables=variables)
     except Exception as e:
         logger.error(f"[ado_tools] [run_pipeline] Tool failed. project='{project}', pipeline_id={pipeline_id}, branch='{branch}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_get_pipeline_run", description="Get the status and result of a specific Azure DevOps pipeline run.", approval_mode="never_require")
@@ -201,7 +201,7 @@ def get_pipeline_run(
         return ado_get_pipeline_run(project=project, pipeline_id=pipeline_id, run_id=run_id)
     except Exception as e:
         logger.error(f"[ado_tools] [get_pipeline_run] Tool failed. project='{project}', pipeline_id={pipeline_id}, run_id={run_id}. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_create_work_item", description="Create a work item (Bug, Task, User Story, etc.) in Azure DevOps.", approval_mode="never_require")
@@ -216,7 +216,7 @@ def create_work_item(
         return ado_create_work_item(project=project, work_item_type=work_item_type, title=title, description=description)
     except Exception as e:
         logger.error(f"[ado_tools] [create_work_item] Tool failed. project='{project}', type='{work_item_type}', title='{title}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_get_work_item", description="Get details of a work item by ID from Azure DevOps.", approval_mode="never_require")
@@ -228,7 +228,7 @@ def get_work_item(
         return ado_get_work_item(work_item_id=work_item_id)
     except Exception as e:
         logger.error(f"[ado_tools] [get_work_item] Tool failed. work_item_id={work_item_id}. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_set_pipeline_variable", description="Set or update a variable in an Azure DevOps variable group.", approval_mode="never_require")
@@ -245,7 +245,7 @@ def set_pipeline_variable(
                                          var_name=var_name, var_value=var_value, is_secret=is_secret)
     except Exception as e:
         logger.error(f"[ado_tools] [set_pipeline_variable] Tool failed. project='{project}', group='{group_name}', var='{var_name}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 # ── Dispatch Tools ────────────────────────────────────────────────────────────
@@ -262,7 +262,7 @@ def dispatch_pipeline(
         return ado_dispatch_pipeline(project=project, pipeline_name=pipeline_name, branch=branch, variables=variables)
     except Exception as e:
         logger.error(f"[ado_tools] [dispatch_pipeline] Tool failed. project='{project}', pipeline_name='{pipeline_name}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_approve_pipeline_run", description="Approve a pending pipeline run gate or approval check in Azure DevOps.", approval_mode="never_require")
@@ -276,7 +276,7 @@ def approve_pipeline_run(
         return ado_approve_pipeline_run(project=project, approval_id=approval_id, comment=comment)
     except Exception as e:
         logger.error(f"[ado_tools] [approve_pipeline_run] Tool failed. project='{project}', approval_id='{approval_id}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 # ── Monitoring Tools ──────────────────────────────────────────────────────────
@@ -292,7 +292,7 @@ def list_pipeline_runs(
         return ado_list_pipeline_runs(project=project, pipeline_id=pipeline_id, top=top)
     except Exception as e:
         logger.error(f"[ado_tools] [list_pipeline_runs] Tool failed. project='{project}', pipeline_id={pipeline_id}. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_get_pipeline_logs", description="Get log entries for a specific Azure DevOps pipeline run.", approval_mode="never_require")
@@ -306,7 +306,7 @@ def get_pipeline_logs(
         return ado_get_pipeline_logs(project=project, pipeline_id=pipeline_id, run_id=run_id)
     except Exception as e:
         logger.error(f"[ado_tools] [get_pipeline_logs] Tool failed. project='{project}', pipeline_id={pipeline_id}, run_id={run_id}. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 @tool(name="ado_get_build_timeline", description="Get the detailed step-by-step timeline of an Azure DevOps build, showing each task's state and result.", approval_mode="never_require")
@@ -319,7 +319,7 @@ def get_build_timeline(
         return ado_get_build_timeline(project=project, build_id=build_id)
     except Exception as e:
         logger.error(f"[ado_tools] [get_build_timeline] Tool failed. project='{project}', build_id={build_id}. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
 
 
 # ── Create Pipeline ───────────────────────────────────────────────────────────
@@ -339,7 +339,27 @@ def create_pipeline(
                                    yaml_path=yaml_path, branch=branch, folder=folder)
     except Exception as e:
         logger.error(f"[ado_tools] [create_pipeline] Tool failed. project='{project}', name='{name}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
+
+
+# ── Find Files ───────────────────────────────────────────────────────────────
+
+@tool(name="ado_find_files", description="Search for files in an Azure DevOps repository by file extension (e.g. '.yml', '.json') and/or a regex pattern matched against file paths.", approval_mode="never_require")
+def find_files(
+    project: Annotated[str, Field(description="Azure DevOps project name.")],
+    repo_name: Annotated[str, Field(description="Repository name or ID.")],
+    branch: Annotated[str, Field(description="Branch to search in.")] = "main",
+    pattern: Annotated[Optional[str], Field(description="Regex pattern to match against file paths. Leave empty to skip regex filtering.")] = None,
+    extensions: Annotated[Optional[list], Field(description="List of file extensions to filter by (e.g. ['.yml', '.json']). Leave empty to skip extension filtering.")] = None,
+    scope_path: Annotated[str, Field(description="Repo folder path to search under (e.g. '/src'). Defaults to repo root.")] = "/",
+) -> list:
+    logger.info(f"[ado_tools] [find_files] Tool called. project='{project}', repo='{repo_name}', branch='{branch}', pattern='{pattern}', extensions={extensions}, scope='{scope_path}'")
+    try:
+        return ado_find_files(project=project, repo_name=repo_name, branch=branch,
+                              pattern=pattern, extensions=extensions, scope_path=scope_path)
+    except Exception as e:
+        logger.error(f"[ado_tools] [find_files] Tool failed. project='{project}', repo='{repo_name}'. Error: {e}", exc_info=True)
+        raise
 
 
 # ── Create Project ────────────────────────────────────────────────────────────
@@ -358,4 +378,4 @@ def create_project(
                                    source_control=source_control, process_template=process_template)
     except Exception as e:
         logger.error(f"[ado_tools] [create_project] Tool failed. name='{name}'. Error: {e}", exc_info=True)
-        return {"error": str(e)}
+        raise
