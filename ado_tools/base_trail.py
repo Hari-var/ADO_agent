@@ -7,10 +7,14 @@ from ado_tools.ado_adapter import (
     ado_list_commits, ado_read_file, ado_commit_file,
     ado_create_pull_request, ado_list_pipelines, ado_run_pipeline,
     ado_get_pipeline_run, ado_create_work_item, ado_get_work_item,
-    ado_set_pipeline_variable,
+    ado_set_pipeline_variable, ado_sync_kv_secret_to_pipeline_variable,
     ado_dispatch_pipeline, ado_approve_pipeline_run,
     ado_list_pipeline_runs, ado_get_pipeline_logs, ado_get_build_timeline,
     ado_create_pipeline, ado_find_files,
+    ado_list_keyvault_secrets,
+    ado_sync_secret_to_keyvault, ado_sync_secret_to_github_repo, ado_sync_secret_to_github_org,
+    ado_sync_kv_to_github_repo_variable, ado_sync_kv_to_github_org_variable,
+    ado_list_github_repo_secrets, ado_list_github_org_secrets,
 )
 
 logger = get_logger(__name__)
@@ -231,7 +235,7 @@ def get_work_item(
         raise
 
 
-@tool(name="ado_set_pipeline_variable", description="Set or update a variable in an Azure DevOps variable group.", approval_mode="never_require")
+@tool(name="ado_set_pipeline_variable", description="Set or update a non-secret variable in an Azure DevOps variable group. For secret variables whose value must be read from Azure Key Vault, use ado_sync_kv_secret_to_pipeline_variable instead — never ask the user for a secret value.", approval_mode="never_require")
 def set_pipeline_variable(
     project: Annotated[str, Field(description="Azure DevOps project name.")],
     group_name: Annotated[str, Field(description="Variable group name.")],
@@ -245,6 +249,27 @@ def set_pipeline_variable(
                                          var_name=var_name, var_value=var_value, is_secret=is_secret)
     except Exception as e:
         logger.error(f"[ado_tools] [set_pipeline_variable] Tool failed. project='{project}', group='{group_name}', var='{var_name}'. Error: {e}", exc_info=True)
+        raise
+
+
+@tool(name="ado_sync_kv_secret_to_pipeline_variable", description="Read a secret from Azure Key Vault and write it as a pipeline variable in an Azure DevOps variable group. The secret value is fetched and written internally — it is never exposed to the agent. Use is_secret=true to store it as a masked secret variable, or is_secret=false to store it as a plain non-secret variable. Always use this tool when the value comes from Key Vault.", approval_mode="never_require")
+def sync_kv_secret_to_pipeline_variable(
+    project: Annotated[str, Field(description="Azure DevOps project name.")],
+    group_name: Annotated[str, Field(description="Variable group name.")],
+    kv_secret_name: Annotated[str, Field(description="Name of the secret in Azure Key Vault.")],
+    var_name: Annotated[Optional[str], Field(description="Variable name to set in the group. Defaults to the Key Vault secret name if not provided.")] = None,
+    vault_name: Annotated[Optional[str], Field(description="Key Vault name. Defaults to vault in Azure_Secrets_URL env var.")] = None,
+    is_secret: Annotated[bool, Field(description="True to store as a masked secret variable (default), False to store as a plain non-secret variable.")] = True,
+) -> str:
+    logger.info(f"[ado_tools] [sync_kv_secret_to_pipeline_variable] Tool called. project='{project}', group='{group_name}', kv_secret='{kv_secret_name}', var_name='{var_name}', is_secret={is_secret}")
+    try:
+        return ado_sync_kv_secret_to_pipeline_variable(
+            project=project, group_name=group_name,
+            kv_secret_name=kv_secret_name, var_name=var_name, vault_name=vault_name,
+            is_secret=is_secret,
+        )
+    except Exception as e:
+        logger.error(f"[ado_tools] [sync_kv_secret_to_pipeline_variable] Tool failed. project='{project}', group='{group_name}', kv_secret='{kv_secret_name}'. Error: {e}", exc_info=True)
         raise
 
 
@@ -378,4 +403,129 @@ def create_project(
                                    source_control=source_control, process_template=process_template)
     except Exception as e:
         logger.error(f"[ado_tools] [create_project] Tool failed. name='{name}'. Error: {e}", exc_info=True)
+        raise
+
+
+# ── Key Vault & GitHub Secrets ────────────────────────────────────────────────
+
+@tool(name="ado_list_keyvault_secrets", description="List all secret names stored in an Azure Key Vault. Uses the vault derived from Azure_Secrets_URL env var by default.", approval_mode="never_require")
+def list_keyvault_secrets(
+    vault_name: Annotated[Optional[str], Field(description="Key Vault name (e.g. 'my-vault'). Defaults to vault in Azure_Secrets_URL env var.")] = None,
+) -> list:
+    logger.info(f"[ado_tools] [list_keyvault_secrets] Tool called. vault_name='{vault_name}'")
+    try:
+        return ado_list_keyvault_secrets(vault_name=vault_name)
+    except Exception as e:
+        logger.error(f"[ado_tools] [list_keyvault_secrets] Tool failed. Error: {e}", exc_info=True)
+        raise
+
+
+@tool(name="ado_sync_secret_to_keyvault", description="Copy a secret from the source Azure Key Vault into a target Azure Key Vault. Optionally supply an override value instead of reading from source.", approval_mode="never_require")
+def sync_secret_to_keyvault(
+    secret_name: Annotated[str, Field(description="Name of the secret to sync.")],
+    target_vault_name: Annotated[str, Field(description="Target Key Vault name (e.g. 'prod-vault').")],
+    source_vault_name: Annotated[Optional[str], Field(description="Source Key Vault name. Defaults to vault in Azure_Secrets_URL env var.")] = None,
+) -> str:
+    logger.info(f"[ado_tools] [sync_secret_to_keyvault] Tool called. secret_name='{secret_name}', target='{target_vault_name}'")
+    try:
+        return ado_sync_secret_to_keyvault(
+            secret_name=secret_name,
+            target_vault_name=target_vault_name,
+            source_vault_name=source_vault_name,
+        )
+    except Exception as e:
+        logger.error(f"[ado_tools] [sync_secret_to_keyvault] Tool failed. secret_name='{secret_name}'. Error: {e}", exc_info=True)
+        raise
+
+
+@tool(name="ado_sync_secret_to_github_repo", description="Read a secret from Azure Key Vault and upsert it as a GitHub Actions secret on a specific repository.", approval_mode="never_require")
+async def sync_secret_to_github_repo(
+    repo: Annotated[str, Field(description="GitHub repository in 'owner/repo' format (e.g. 'myorg/myrepo').")],
+    secret_name: Annotated[str, Field(description="Secret name — used as both the Key Vault secret name and the GitHub secret name.")],
+    source_vault_name: Annotated[Optional[str], Field(description="Source Key Vault name. Defaults to vault in Azure_Secrets_URL env var.")] = None,
+) -> str:
+    logger.info(f"[ado_tools] [sync_secret_to_github_repo] Tool called. repo='{repo}', secret_name='{secret_name}'")
+    try:
+        return await ado_sync_secret_to_github_repo(
+            repo=repo,
+            secret_name=secret_name,
+            source_vault_name=source_vault_name,
+        )
+    except Exception as e:
+        logger.error(f"[ado_tools] [sync_secret_to_github_repo] Tool failed. repo='{repo}', secret_name='{secret_name}'. Error: {e}", exc_info=True)
+        raise
+
+
+@tool(name="ado_sync_secret_to_github_org", description="Read a secret from Azure Key Vault and upsert it as a GitHub Actions secret at the organisation level.", approval_mode="never_require")
+def sync_secret_to_github_org(
+    org: Annotated[str, Field(description="GitHub organisation name (e.g. 'myorg').")],
+    secret_name: Annotated[str, Field(description="Secret name — used as both the Key Vault secret name and the GitHub secret name.")],
+    source_vault_name: Annotated[Optional[str], Field(description="Source Key Vault name. Defaults to vault in Azure_Secrets_URL env var.")] = None,
+    visibility: Annotated[str, Field(description="Secret visibility: 'all', 'private', or 'selected'. Defaults to 'all'.")] = "all",
+) -> str:
+    logger.info(f"[ado_tools] [sync_secret_to_github_org] Tool called. org='{org}', secret_name='{secret_name}', visibility='{visibility}'")
+    try:
+        return ado_sync_secret_to_github_org(
+            org=org,
+            secret_name=secret_name,
+            source_vault_name=source_vault_name,
+            visibility=visibility,
+        )
+    except Exception as e:
+        logger.error(f"[ado_tools] [sync_secret_to_github_org] Tool failed. org='{org}', secret_name='{secret_name}'. Error: {e}", exc_info=True)
+        raise
+
+
+@tool(name="ado_sync_kv_to_github_repo_variable", description="Read a secret from Azure Key Vault and set it as a GitHub Actions repository variable (plain, unencrypted). The value is fetched and written internally — never exposed to the agent. Use this when the destination is a GitHub variable, not a secret.", approval_mode="never_require")
+def sync_kv_to_github_repo_variable(
+    repo: Annotated[str, Field(description="GitHub repository in 'owner/repo' format.")],
+    kv_secret_name: Annotated[str, Field(description="Name of the secret in Azure Key Vault.")],
+    var_name: Annotated[Optional[str], Field(description="GitHub variable name. Defaults to the KV secret name (hyphens replaced with underscores).")] = None,
+    vault_name: Annotated[Optional[str], Field(description="Key Vault name. Defaults to vault in Azure_Secrets_URL env var.")] = None,
+) -> str:
+    logger.info(f"[ado_tools] [sync_kv_to_github_repo_variable] Tool called. repo='{repo}', kv_secret='{kv_secret_name}', var_name='{var_name}'")
+    try:
+        return ado_sync_kv_to_github_repo_variable(repo=repo, kv_secret_name=kv_secret_name, var_name=var_name, vault_name=vault_name)
+    except Exception as e:
+        logger.error(f"[ado_tools] [sync_kv_to_github_repo_variable] Tool failed. repo='{repo}', kv_secret='{kv_secret_name}'. Error: {e}", exc_info=True)
+        raise
+
+
+@tool(name="ado_sync_kv_to_github_org_variable", description="Read a secret from Azure Key Vault and set it as a GitHub Actions organisation variable (plain, unencrypted). The value is fetched and written internally — never exposed to the agent. Use this when the destination is a GitHub org variable, not a secret.", approval_mode="never_require")
+def sync_kv_to_github_org_variable(
+    org: Annotated[str, Field(description="GitHub organisation name.")],
+    kv_secret_name: Annotated[str, Field(description="Name of the secret in Azure Key Vault.")],
+    var_name: Annotated[Optional[str], Field(description="GitHub variable name. Defaults to the KV secret name (hyphens replaced with underscores).")] = None,
+    vault_name: Annotated[Optional[str], Field(description="Key Vault name. Defaults to vault in Azure_Secrets_URL env var.")] = None,
+    visibility: Annotated[str, Field(description="Variable visibility: 'all', 'private', or 'selected'. Defaults to 'all'.")] = "all",
+) -> str:
+    logger.info(f"[ado_tools] [sync_kv_to_github_org_variable] Tool called. org='{org}', kv_secret='{kv_secret_name}', var_name='{var_name}', visibility='{visibility}'")
+    try:
+        return ado_sync_kv_to_github_org_variable(org=org, kv_secret_name=kv_secret_name, var_name=var_name, vault_name=vault_name, visibility=visibility)
+    except Exception as e:
+        logger.error(f"[ado_tools] [sync_kv_to_github_org_variable] Tool failed. org='{org}', kv_secret='{kv_secret_name}'. Error: {e}", exc_info=True)
+        raise
+
+
+@tool(name="ado_list_github_repo_secrets", description="List all GitHub Actions secret names (with created/updated timestamps) for a repository.", approval_mode="never_require")
+def list_github_repo_secrets(
+    repo: Annotated[str, Field(description="GitHub repository in 'owner/repo' format.")],
+) -> list:
+    logger.info(f"[ado_tools] [list_github_repo_secrets] Tool called. repo='{repo}'")
+    try:
+        return ado_list_github_repo_secrets(repo=repo)
+    except Exception as e:
+        logger.error(f"[ado_tools] [list_github_repo_secrets] Tool failed. repo='{repo}'. Error: {e}", exc_info=True)
+        raise
+
+
+@tool(name="ado_list_github_org_secrets", description="List all GitHub Actions secret names (with visibility and timestamps) for an organisation.", approval_mode="never_require")
+def list_github_org_secrets(
+    org: Annotated[str, Field(description="GitHub organisation name.")],
+) -> list:
+    logger.info(f"[ado_tools] [list_github_org_secrets] Tool called. org='{org}'")
+    try:
+        return ado_list_github_org_secrets(org=org)
+    except Exception as e:
+        logger.error(f"[ado_tools] [list_github_org_secrets] Tool failed. org='{org}'. Error: {e}", exc_info=True)
         raise

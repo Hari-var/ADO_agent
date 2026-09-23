@@ -42,14 +42,14 @@ async def ado_agent_call(request: ado_agent_request):
 
     try:
         agent = await ado_agent()
-        response = await agent.run(request.prompt, session=request.session, task_id=task_id)
+        response, session_dict = await agent.run(request.prompt, session=request.session, task_id=task_id)
 
         if response:
             output, is_json = try_parse_json(response.text)
             ato().update_task(db=db, task_id=task_id, task=AgentTaskDetailsUpdateRequest(
                 task_status="success", end_time=datetime.now(timezone.utc)
             ))
-            return {"response": "ADO agent executed successfully", "raw": response, "is_json": is_json, "output": output}
+            return {"response": "ADO agent executed successfully", "raw": response, "is_json": is_json, "output": output, "session": session_dict}
 
         ato().update_task(db=db, task_id=task_id, task=AgentTaskDetailsUpdateRequest(
             task_status="failed", end_time=datetime.now(timezone.utc), issue="No response from agent"
