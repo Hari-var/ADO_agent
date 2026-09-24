@@ -14,7 +14,7 @@ from ado_tools.ado_adapter import (
     ado_list_keyvault_secrets,
     ado_sync_secret_to_keyvault, ado_sync_secret_to_github_repo, ado_sync_secret_to_github_org,
     ado_sync_kv_to_github_repo_variable, ado_sync_kv_to_github_org_variable,
-    ado_list_github_repo_secrets, ado_list_github_org_secrets,
+    ado_list_github_repo_secrets, ado_list_github_org_secrets, ado_wait_for_pipeline_run
 )
 
 logger = get_logger(__name__)
@@ -207,6 +207,37 @@ def get_pipeline_run(
         logger.error(f"[ado_tools] [get_pipeline_run] Tool failed. project='{project}', pipeline_id={pipeline_id}, run_id={run_id}. Error: {e}", exc_info=True)
         raise
 
+@tool(
+    name="ado_wait_for_pipeline_run",
+    description="Poll an Azure DevOps pipeline run until it finishes, then return its final status and result.",
+    approval_mode="never_require",
+)
+def wait_for_pipeline_run(
+    project: Annotated[str, Field(description="Azure DevOps project name.")],
+    pipeline_id: Annotated[int, Field(description="Numeric pipeline ID.")],
+    run_id: Annotated[int, Field(description="Numeric run ID.")],
+    poll_interval: Annotated[int, Field(description="Seconds between polls. Default 15.")] = 15,
+    timeout: Annotated[int, Field(description="Max seconds to wait before giving up. Default 1800 (30 min).")] = 1800,
+) -> dict:
+    logger.info(
+        f"[ado_tools] [wait_for_pipeline_run] Tool called. project='{project}', pipeline_id={pipeline_id}, "
+        f"run_id={run_id}, poll_interval={poll_interval}, timeout={timeout}"
+    )
+    try:
+        return ado_wait_for_pipeline_run(
+            project=project,
+            pipeline_id=pipeline_id,
+            run_id=run_id,
+            poll_interval=poll_interval,
+            timeout=timeout,
+        )
+    except Exception as e:
+        logger.error(
+            f"[ado_tools] [wait_for_pipeline_run] Tool failed. project='{project}', pipeline_id={pipeline_id}, "
+            f"run_id={run_id}. Error: {e}",
+            exc_info=True,
+        )
+        raise
 
 @tool(name="ado_create_work_item", description="Create a work item (Bug, Task, User Story, etc.) in Azure DevOps.", approval_mode="never_require")
 def create_work_item(

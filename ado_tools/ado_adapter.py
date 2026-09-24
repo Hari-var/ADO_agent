@@ -360,6 +360,45 @@ def ado_get_pipeline_run(project: str, pipeline_id: int, run_id: int) -> dict:
         raise
 
 
+import time
+
+def ado_wait_for_pipeline_run(
+    project: str,
+    pipeline_id: int,
+    run_id: int,
+    poll_interval: int = 15,
+    timeout: int = 1800,
+) -> dict:
+    logger.info(
+        f"[ado_adapter] [wait_for_pipeline_run] Polling run {run_id} for pipeline {pipeline_id} "
+        f"in project '{project}' (interval={poll_interval}s, timeout={timeout}s)."
+    )
+    start_time = time.monotonic()
+    try:
+        while True:
+            run = ado_get_pipeline_run(project=project, pipeline_id=pipeline_id, run_id=run_id)
+            state = run.get("state")
+            logger.info(f"[ado_adapter] [wait_for_pipeline_run] Run {run_id} state='{state}'.")
+
+            if state == "completed":
+                logger.info(
+                    f"[ado_adapter] [wait_for_pipeline_run] Run {run_id} completed "
+                    f"with result='{run.get('result')}'."
+                )
+                return run
+
+            if time.monotonic() - start_time > timeout:
+                logger.error(
+                    f"[ado_adapter] [wait_for_pipeline_run] Timed out after {timeout}s waiting for run {run_id}."
+                )
+                raise TimeoutError(f"Timed out after {timeout}s waiting for pipeline run {run_id} to complete.")
+
+            time.sleep(poll_interval)
+    except Exception as e:
+        logger.error(f"[ado_adapter] [wait_for_pipeline_run] Failed. Error: {e}", exc_info=True)
+        raise
+
+
 # ── Work Items ────────────────────────────────────────────────────────────────
 
 def ado_create_work_item(project: str, work_item_type: str, title: str, description: str = None) -> dict:
@@ -479,6 +518,7 @@ def ado_list_pipeline_runs(project: str, pipeline_id: int, top: int = 10) -> lis
     except Exception as e:
         logger.error(f"[ado_adapter] [list_pipeline_runs] Failed. Error: {e}", exc_info=True)
         raise
+
 
 
 def ado_get_pipeline_logs(project: str, pipeline_id: int, run_id: int) -> list[dict]:
