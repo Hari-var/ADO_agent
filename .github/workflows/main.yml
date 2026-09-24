@@ -28,7 +28,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt --target="./.python_packages/lib/site-packages"
 
       - name: Create Deployment Package
         run: |
@@ -39,12 +39,19 @@ jobs:
             -x "*.pyc" \
             -x "venv/*" \
             -x ".venv/*" \
-            -x "antenv/*"
+            -x "antenv/*" \
+            -x ".pytest_cache/*" \
+            -x ".mypy_cache/*"
 
       - name: Verify Deployment Package
         run: |
           echo "Deployment package contents:"
           unzip -l app.zip | head -100
+
+      - name: Verify Python Dependencies
+        run: |
+          test -d .python_packages/lib/site-packages
+          echo "Python dependencies successfully packaged."
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
