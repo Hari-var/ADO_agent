@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
 from ado_agent import ado_agent
-from vida.utils.preprocess import try_parse_json  # type: ignore
+from vida.utils.preprocess import serialize_agent_response  # type: ignore
 from vida.models.requests.Agent_Task_requests import AgentTaskDetailsCreateRequest, AgentTaskDetailsUpdateRequest  # type: ignore
 from vida.database.database import sessionlocal  # type: ignore
 from vida.utils.request_context import task_id_ctx  # type: ignore
@@ -45,7 +45,7 @@ async def ado_agent_call(request: ado_agent_request):
         response, session_dict = await agent.run(request.prompt, session=request.session, task_id=task_id)
 
         if response:
-            output, is_json = try_parse_json(response.text)
+            output, is_json = serialize_agent_response(response.text)
             ato().update_task(db=db, task_id=task_id, task=AgentTaskDetailsUpdateRequest(
                 task_status="success", end_time=datetime.now(timezone.utc)
             ))
