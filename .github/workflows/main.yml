@@ -1,14 +1,14 @@
-name: ADO-Agent CI-CD Pipeline
+name: ADO-Agent CI-CD Pipeline for TSC Acc deployment
 
 on:
   push:
     branches:
-      - main
+      - TSC_deploy
   workflow_dispatch:
 
 env:
   PYTHON_VERSION: "3.13"
-  AZURE_WEBAPP_NAME: "adoagent"
+  AZURE_WEBAPP_NAME: "ADO-Agent"
 
 jobs:
 
@@ -110,5 +110,5 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_TSC}}
           package: app.zip
