@@ -1,4 +1,5 @@
 uvicorn
 azure-devops
 msrest
+psycopg[binary]
 git+https://github.com/shashanktu/vida.git
