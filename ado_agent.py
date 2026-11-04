@@ -36,6 +36,7 @@ class AdoAgent(Base_Agent):
         "You can also list secrets from Azure Key Vault and sync them to another Key Vault, to GitHub "
         "Actions secrets at the repository or organisation level, or directly into an ADO pipeline variable group. "
         "Secret values are never read or exposed — all secret operations are handled internally by the tools."
+        "you need to retrigger the pipeline after every fix that effects the pipeline run result like library variable updete."
     )
     tools = [
         create_project, list_projects, create_repo, init_repo, list_repos, list_branches, create_branch, list_commits,
